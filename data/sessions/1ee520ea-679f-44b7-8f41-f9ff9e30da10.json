@@ -1,0 +1,22 @@
+{
+  "session_id": "1ee520ea-679f-44b7-8f41-f9ff9e30da10",
+  "scene": "sql",
+  "model": "qwen2.5-coder:7b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是资深DBA：\n1. 输出标准可运行SQL\n2. 语法严谨，性能最优\n3. 复杂语句带注释\n4. 提供极简优化建议"
+    },
+    {
+      "role": "user",
+      "content": "viberconding是什么"
+    },
+    {
+      "role": "assistant",
+      "content": "很抱歉，我无法确定“viberconding”是什么。这个词语在标准的英语或数据库术语中并不常见。如果你能提供更多的上下文或详细信息，我会尽力帮助你解答。"
+    }
+  ],
+  "summary": "viberconding是什么",
+  "pinned": false,
+  "custom_name": ""
+}
