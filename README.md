@@ -166,4 +166,4 @@ MAX_SESSIONS = 50
 
 ## 📄 License
 
-MIT
+
