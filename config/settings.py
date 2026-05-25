@@ -17,7 +17,7 @@ GENERATION_CONFIG = {
 }
 
 # 会话上限
-MAX_SESSIONS = 10  # 最多保留的会话数，超出后新建会话会提示删除历史
+MAX_SESSIONS = 20  # 最多保留的会话数，超出后新建会话会提示删除历史
 
 # 硬件配置
 HARDWARE_CONFIG = {

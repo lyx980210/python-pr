@@ -55,15 +55,15 @@
             background: var(--primary-gradient);
             height: 100vh;
             display: flex;
-            justify-content: center;
-            align-items: center;
             transition: var(--transition);
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
         }
 
         .chat-container {
-            width: calc(100% - 260px);
-            max-width: 1400px;
-            height: 96vh;
+            flex: 1;
+            height: calc(100vh - 20px);
             background: var(--bg-primary);
             border-radius: 24px;
             box-shadow: var(--card-shadow);
@@ -71,6 +71,11 @@
             flex-direction: column;
             overflow: hidden;
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 10px;
+            margin-left: 270px;
+        }
+        .chat-container.sidebar-collapsed {
+            margin-left: 10px;
         }
 
         .chat-header {
@@ -659,20 +664,24 @@
         /* ==================== 侧边栏样式 ==================== */
         .sidebar {
             position: fixed;
-            left: 0;
-            top: 0;
+            left: 10px;
+            top: 10px;
+            bottom: 10px;
             width: 260px;
-            height: 100vh;
+            min-width: 180px;
+            max-width: 400px;
             background: var(--sidebar-bg);
             backdrop-filter: blur(10px);
-            border-right: none;
+            border-radius: 24px;
+            border: none;
             display: flex;
             flex-direction: column;
             z-index: 100;
-            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 4px 0 24px rgba(0,0,0,0.08);
         }
-        .sidebar.collapsed { transform: translateX(-250px); }
+        .sidebar.collapsed { 
+            transform: translateX(calc(-100% + 8px)); 
+        }
 
         .sidebar-header {
             display: flex;
@@ -701,13 +710,56 @@
             box-shadow: 0 8px 20px rgba(102,126,234,0.35);
         }
 
-        .sidebar-list {
+        /* 自定义滚动条容器 */
+        .sidebar-list-wrapper {
             flex: 1;
-            overflow-y: auto;
-            padding: 8px;
+            position: relative;
+            overflow: hidden;
         }
-        .sidebar-list::-webkit-scrollbar { width: 4px; }
-        .sidebar-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+        .sidebar-list {
+            width: 100%;
+            height: 100%;
+            overflow-y: scroll;
+            padding: 8px;
+            padding-right: 20px;
+        }
+        /* 隐藏原生滚动条 */
+        .sidebar-list::-webkit-scrollbar { width: 0; height: 0; }
+        .sidebar-list { scrollbar-width: none; }
+        
+        /* 自定义滚动条 */
+        .custom-scrollbar {
+            position: absolute;
+            right: 2px;
+            top: 8px;
+            bottom: 8px;
+            width: 6px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 3px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .sidebar-list-wrapper:hover .custom-scrollbar,
+        .sidebar-list-wrapper.scrollable .custom-scrollbar {
+            opacity: 1;
+        }
+        
+        .custom-scrollbar-thumb {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+        }
+        .custom-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #7c8ff0 0%, #8b5bb3 100%);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+            transform: scaleX(1.1);
+        }
 
         .sidebar-loading {
             text-align: center; padding: 30px 0; color: var(--text-secondary); font-size: 13px;
@@ -799,25 +851,56 @@
         .sidebar-item.pinned .sidebar-item-pin { display: flex; color: #f59e0b; }
 
         .sidebar-toggle {
-            position: fixed;
-            left: 0;
+            position: absolute;
+            right: -10px;
             top: 50%;
             transform: translateY(-50%);
-            width: 28px;
-            height: 56px;
+            width: 20px;
+            height: 32px;
             border: 1px solid var(--border-color);
-            border-right: none;
-            border-radius: 8px 0 0 8px;
+            border-radius: 8px;
             background: var(--bg-primary);
             color: var(--text-secondary);
             cursor: pointer;
-            font-size: 12px;
-            transition: var(--transition);
+            font-size: 8px;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            z-index: 101;
         }
-        .sidebar-toggle:hover { background: var(--bg-secondary); color: var(--text-primary); }
+        .sidebar-toggle:hover { 
+            background: var(--accent-color); 
+            color: white; 
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+        }
+        .sidebar.collapsed .sidebar-toggle {
+            right: -10px;
+            left: auto;
+            border-radius: 8px;
+        }
+
+        /* 侧边栏拖动条 */
+        .sidebar-resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 102;
+        }
+        .sidebar-resizer:hover {
+            background: var(--border-color);
+        }
+        .sidebar-resizer:active {
+            background: var(--accent-color);
+            width: 6px;
+        }
 
         .sidebar-expand-btn {
             position: fixed;
@@ -851,26 +934,83 @@
             .sidebar-overlay.visible { display: block; }
         }
 
-        /* 主容器适配侧边栏 —— 用 flex 布局消除间隙 */
-        body {
-            display: flex;
-            justify-content: center;
-            padding-top: 5vh;
-        }
-        .chat-container {
-            margin-left: 260px;
-            transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .chat-container.sidebar-collapsed {
-            margin-left: 0;
-        }
-
-    
         /* 时间戳 */
         .sidebar-item-time {
             font-size: 11px;
             color: #d1d5db;
             margin-top: 2px;
+        }
+
+        /* 侧边栏顶部区域 */
+        .sidebar-top {
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 24px 24px 0 0;
+            flex-shrink: 0;
+        }
+
+        .sidebar-new-dialog {
+            display: block;
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 12px;
+            text-align: left;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-new-dialog:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .sidebar-search {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .sidebar-search input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            background: rgba(255,255,255,0.95);
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #374151;
+            outline: none;
+            box-sizing: border-box;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-search input:focus {
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.5);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            width: 16px;
+            height: 16px;
+            color: #9ca3af;
+            pointer-events: none;
+        }
+
+        /* 调整折叠按钮位置 */
+        .sidebar-toggle {
+            right: -28px;
+            left: auto;
+            border-right: 1px solid var(--border-color);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
         }
 
     </style>
@@ -919,29 +1059,38 @@
     <!-- 🆕 通知容器 -->
     <div class="notification" id="notification"></div>
 
-    <!-- 左侧边栏（仿照截图样式） -->
+    <!-- 左侧边栏 -->
     <div class="sidebar" id="sidebar">
         <!-- 顶部紫色区域 -->
         <div class="sidebar-top">
-            <button class="sidebar-new-dialog" onclick="newSession()" style="display:block;width:100%;padding:12px 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;color:#667eea;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;text-align:left;">
+            <button class="sidebar-new-dialog" onclick="newSession()">
                 <span>+ 新建对话</span>
             </button>
-            <div class="sidebar-search" style="position:relative;display:flex;align-items:center;">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;width:16px;height:16px;color:#9ca3af;pointer-events:none;">
+            <div class="sidebar-search">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <path d="M21 21l-4.35-4.35"></path>
                 </svg>
-                <input type="text" placeholder="搜索对话..." id="searchInput" style="width:100%;padding:10px 12px 10px 36px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;font-size:13px;color:#374151;outline:none;box-sizing:border-box;">
+                <input type="text" placeholder="搜索对话..." id="searchInput">
             </div>
         </div>
         
-        <!-- 会话列表 -->
-        <div class="sidebar-list" id="sidebarList">
-            <div class="sidebar-loading">加载中...</div>
+        <!-- 会话列表容器（带自定义滚动条）-->
+        <div class="sidebar-list-wrapper" id="sidebarListWrapper">
+            <div class="sidebar-list" id="sidebarList">
+                <div class="sidebar-loading">加载中...</div>
+            </div>
+            <!-- 自定义滚动条 -->
+            <div class="custom-scrollbar" id="customScrollbar">
+                <div class="custom-scrollbar-thumb" id="customScrollbarThumb"></div>
+            </div>
         </div>
         
         <!-- 折叠按钮 -->
         <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="收起侧边栏">◀</button>
+        
+        <!-- 拖动调整宽度条 -->
+        <div class="sidebar-resizer" id="sidebarResizer"></div>
     </div>
 
     <!-- 展开按钮 -->
@@ -1288,14 +1437,175 @@
             const expandBtn = document.getElementById('sidebarExpandBtn');
             const chatContainer = document.getElementById('chatContainer');
             const isCollapsed = sidebar.classList.toggle('collapsed');
-            chatContainer.classList.toggle('sidebar-collapsed', isCollapsed);
+            
             if (isCollapsed) {
+                // 折叠时：清除内联样式，让 CSS 类生效
+                chatContainer.style.marginLeft = '';
+                chatContainer.classList.add('sidebar-collapsed');
+                sidebar.style.width = '';
                 expandBtn.classList.add('visible');
             } else {
+                // 展开时：恢复之前的宽度设置
+                chatContainer.classList.remove('sidebar-collapsed');
                 expandBtn.classList.remove('visible');
+                // 恢复保存的宽度
+                const savedWidth = localStorage.getItem('sidebarWidth');
+                if (savedWidth) {
+                    const width = parseInt(savedWidth);
+                    sidebar.style.width = width + 'px';
+                    chatContainer.style.marginLeft = (width + 20) + 'px';
+                } else {
+                    sidebar.style.width = '';
+                    chatContainer.style.marginLeft = '';
+                }
             }
             localStorage.setItem('sidebarCollapsed', isCollapsed);
         }
+
+        // ==================== 🆕 侧边栏拖动调整宽度 ====================
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        function initSidebarResizer() {
+            const resizer = document.getElementById('sidebarResizer');
+            const sidebar = document.getElementById('sidebar');
+            const chatContainer = document.getElementById('chatContainer');
+
+            resizer.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = sidebar.offsetWidth;
+                document.addEventListener('mousemove', resizeSidebar);
+                document.addEventListener('mouseup', stopResize);
+                document.body.style.cursor = 'col-resize';
+            });
+
+            function resizeSidebar(e) {
+                if (!isResizing) return;
+                
+                const minWidth = 180;
+                const maxWidth = 400;
+                const deltaX = e.clientX - startX;
+                let newWidth = startWidth + deltaX;
+                
+                // 限制宽度范围
+                newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+                
+                sidebar.style.width = newWidth + 'px';
+                chatContainer.style.marginLeft = (newWidth + 20) + 'px';
+                
+                // 保存宽度到 localStorage
+                localStorage.setItem('sidebarWidth', newWidth);
+            }
+
+            function stopResize() {
+                isResizing = false;
+                document.removeEventListener('mousemove', resizeSidebar);
+                document.removeEventListener('mouseup', stopResize);
+                document.body.style.cursor = 'default';
+            }
+        }
+
+        // 加载保存的侧边栏宽度
+        function loadSidebarWidth() {
+            const savedWidth = localStorage.getItem('sidebarWidth');
+            const sidebar = document.getElementById('sidebar');
+            const chatContainer = document.getElementById('chatContainer');
+            
+            if (savedWidth) {
+                const width = parseInt(savedWidth);
+                sidebar.style.width = width + 'px';
+                chatContainer.style.marginLeft = (width + 20) + 'px';
+            }
+        }
+
+        // ==================== 🆕 自定义滚动条功能 ====================
+        function initCustomScrollbar() {
+            const list = document.getElementById('sidebarList');
+            const wrapper = document.getElementById('sidebarListWrapper');
+            const scrollbar = document.getElementById('customScrollbar');
+            const thumb = document.getElementById('customScrollbarThumb');
+            
+            if (!list || !wrapper || !scrollbar || !thumb) return;
+            
+            const thumbHeight = 80; // 滑块固定高度
+            
+            function updateScrollbar() {
+                const scrollHeight = list.scrollHeight;
+                const clientHeight = list.clientHeight;
+                const scrollTop = list.scrollTop;
+                
+                // 检查是否需要显示滚动条
+                if (scrollHeight > clientHeight) {
+                    wrapper.classList.add('scrollable');
+                    const maxScroll = scrollHeight - clientHeight;
+                    const maxThumbTop = scrollbar.offsetHeight - thumbHeight;
+                    const thumbTop = (scrollTop / maxScroll) * maxThumbTop;
+                    thumb.style.top = Math.max(0, Math.min(maxThumbTop, thumbTop)) + 'px';
+                } else {
+                    wrapper.classList.remove('scrollable');
+                }
+            }
+            
+            // 监听滚动事件
+            list.addEventListener('scroll', updateScrollbar);
+            
+            // 鼠标拖动滑块
+            let isDragging = false;
+            let startY = 0;
+            let startScrollTop = 0;
+            
+            thumb.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startY = e.clientY;
+                startScrollTop = list.scrollTop;
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', stopDrag);
+            });
+            
+            function onDrag(e) {
+                if (!isDragging) return;
+                const scrollbarHeight = scrollbar.offsetHeight;
+                const scrollHeight = list.scrollHeight;
+                const clientHeight = list.clientHeight;
+                const maxScroll = scrollHeight - clientHeight;
+                const maxThumbTop = scrollbarHeight - thumbHeight;
+                const deltaY = e.clientY - startY;
+                const deltaScroll = (deltaY / maxThumbTop) * maxScroll;
+                list.scrollTop = Math.max(0, Math.min(maxScroll, startScrollTop + deltaScroll));
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+            
+            // 点击滚动条轨道
+            scrollbar.addEventListener('click', function(e) {
+                if (e.target === scrollbar) {
+                    const rect = scrollbar.getBoundingClientRect();
+                    const clickY = e.clientY - rect.top;
+                    const scrollbarHeight = scrollbar.offsetHeight;
+                    const scrollHeight = list.scrollHeight;
+                    const clientHeight = list.clientHeight;
+                    const maxScroll = scrollHeight - clientHeight;
+                    const ratio = clickY / scrollbarHeight;
+                    list.scrollTop = ratio * maxScroll;
+                }
+            });
+            
+            // 初始化
+            updateScrollbar();
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSidebarWidth();
+            initSidebarResizer();
+            initCustomScrollbar();
+        });
 
         function loadSessions() {
             return fetch('/api/list_sessions')

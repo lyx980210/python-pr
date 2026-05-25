@@ -1,15 +1,8 @@
-from flask import Flask, request, jsonify, render_template, session
-from flask_cors import CORS
-from core.chat_manager import ChatManager, DATA_DIR
-from core.llm_client import chat_with_memory  # 保留兼容（命令行模式使用）
-from prompts import PROMPT_MAP
-from config.settings import CODE_MODEL, GENERAL_MODEL, ADVANCED_MODEL, MAX_SESSIONS
-import uuid
-from datetime import timedelta
 import os
 import sys
 import json
-
+import uuid
+from datetime import timedelta
 
 # 获取当前文件所在目录（web 目录）
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -19,6 +12,13 @@ project_root = os.path.abspath(os.path.join(basedir, '..'))
 
 # 将项目根目录添加到 Python 路径（确保能导入 core 和 prompts）
 sys.path.insert(0, project_root)
+
+from flask import Flask, request, jsonify, render_template, session
+from flask_cors import CORS
+from core.chat_manager import ChatManager, DATA_DIR
+from core.llm_client import chat_with_memory  # 保留兼容（命令行模式使用）
+from prompts import PROMPT_MAP
+from config.settings import CODE_MODEL, GENERAL_MODEL, ADVANCED_MODEL, MAX_SESSIONS
 
 # 指定 templates 文件夹路径（在项目根目录下）
 template_dir = os.path.join(project_root, 'templates')
@@ -394,10 +394,10 @@ def get_current_scene(chat_manager):
 
 
 if __name__ == '__main__':
-    print(f"\n🚀 Flask 应用启动")
-    print(f"📂 模板文件夹: {app.template_folder}")
-    print(f"🤖 可用模型:")
+    print("\nFlask 应用启动")
+    print(f"模板文件夹: {app.template_folder}")
+    print("可用模型:")
     for key, value in AVAILABLE_MODELS.items():
         print(f"   - {value['name']}: {value['value']}")
-    print(f"🌐 访问地址: http://127.0.0.1:5000\n")
+    print("访问地址: http://127.0.0.1:5000\n")
     app.run(debug=True, host='0.0.0.0', port=5000)
