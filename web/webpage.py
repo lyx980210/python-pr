@@ -2,6 +2,10 @@ import os
 import sys
 import json
 import uuid
+import logging
+import gzip
+import shutil
+from logging.handlers import RotatingFileHandler
 from datetime import timedelta
 
 # 获取当前文件所在目录（web 目录）
@@ -18,7 +22,84 @@ from flask_cors import CORS
 from core.chat_manager import ChatManager, DATA_DIR
 from core.llm_client import chat_with_memory  # 保留兼容（命令行模式使用）
 from prompts import PROMPT_MAP
-from config.settings import CODE_MODEL, GENERAL_MODEL, ADVANCED_MODEL, MAX_SESSIONS
+from config.settings import CODE_MODEL, GENERAL_MODEL, ADVANCED_MODEL, MAX_SESSIONS, LOGGING_CONFIG
+
+# 配置日志（从统一配置文件读取）
+def setup_logging():
+    log_config = LOGGING_CONFIG
+    log_dir = log_config['log_dir']
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # 创建日志格式
+    log_format = logging.Formatter(log_config['format'])
+    
+    # 创建日志记录器
+    logger = logging.getLogger(__name__)
+    
+    # 获取日志级别
+    level = getattr(logging, log_config['level'].upper(), logging.INFO)
+    logger.setLevel(level)
+    logger.propagate = False  # 避免重复输出
+    
+    # 移除已存在的处理器（避免重复添加）
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # 控制台处理器
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_format)
+    console_handler.setLevel(level)
+    logger.addHandler(console_handler)
+    
+    # 文件处理器（按文件大小滚动，支持压缩）
+    file_path = os.path.join(log_dir, log_config['file_name'])
+    
+    # 创建自定义 RotatingFileHandler，支持自动压缩
+    class CompressingRotatingFileHandler(RotatingFileHandler):
+        def __init__(self, filename, maxBytes=0, backupCount=0, encoding=None, delay=False):
+            super().__init__(filename, maxBytes=maxBytes, backupCount=backupCount, encoding=encoding, delay=delay)
+        
+        def doRollover(self):
+            super().doRollover()
+            # 如果启用压缩，压缩旧日志文件
+            if log_config.get('compress', False):
+                # 获取最新的备份文件
+                backup_files = []
+                for f in os.listdir(log_dir):
+                    if f.startswith(os.path.basename(file_path)) and f != os.path.basename(file_path):
+                        backup_files.append(f)
+                
+                if backup_files:
+                    # 找到最新的备份文件（刚创建的）
+                    backup_files.sort(reverse=True)
+                    latest_backup = backup_files[0]
+                    backup_path = os.path.join(log_dir, latest_backup)
+                    
+                    # 压缩文件
+                    gz_path = backup_path + '.gz'
+                    try:
+                        with open(backup_path, 'rb') as f_in:
+                            with gzip.open(gz_path, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                        # 删除原文件
+                        os.remove(backup_path)
+                    except Exception as e:
+                        print(f"压缩日志文件失败: {e}")
+    
+    file_handler = CompressingRotatingFileHandler(
+        file_path,
+        maxBytes=log_config.get('max_file_size', 200 * 1024 * 1024),
+        backupCount=log_config['backup_count'],
+        encoding=log_config['encoding']
+    )
+    file_handler.setFormatter(log_format)
+    file_handler.setLevel(level)
+    logger.addHandler(file_handler)
+    
+    return logger
+
+# 初始化日志
+logger = setup_logging()
 
 # 指定 templates 文件夹路径（在项目根目录下）
 template_dir = os.path.join(project_root, 'templates')
@@ -38,6 +119,27 @@ AVAILABLE_MODELS = {
     'general': {'name': 'DeepSeek-R1 1.5B (通用场景)', 'value': GENERAL_MODEL},
     'advanced': {'name': 'DeepSeek-R1 8B (复杂任务)', 'value': ADVANCED_MODEL}
 }
+
+# ==================== 统一响应格式 ====================
+def success_response(data=None, message=None):
+    """成功响应"""
+    response = {'success': True}
+    if data is not None:
+        response['data'] = data
+    if message is not None:
+        response['message'] = message
+    return jsonify(response)
+
+def error_response(message, error_code=400, details=None):
+    """错误响应"""
+    response = {
+        'success': False,
+        'error': message,
+        'error_code': error_code
+    }
+    if details is not None:
+        response['details'] = details
+    return jsonify(response), error_code
 
 
 def get_chat_manager():
@@ -73,13 +175,13 @@ def get_models():
         ]
         current_model = session.get('selected_model', GENERAL_MODEL)
 
-        return jsonify({
-            'success': True,
+        return success_response({
             'models': models,
             'current_model': current_model
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"获取模型列表失败: {e}")
+        return error_response('获取模型列表失败', 500, str(e))
 
 
 @app.route('/api/switch_model', methods=['POST'])
@@ -90,7 +192,7 @@ def switch_model():
         model_id = data.get('model_id', '').strip()
 
         if not model_id or model_id not in AVAILABLE_MODELS:
-            return jsonify({'error': '无效的模型ID'}), 400
+            return error_response('无效的模型ID', 400)
 
         new_model = AVAILABLE_MODELS[model_id]['value']
 
@@ -106,14 +208,13 @@ def switch_model():
                 # 创建新的 ChatManager（带 session_id 实现持久化）
                 chat_sessions[session_id] = ChatManager(default_scene=old_scene, model=new_model, session_id=session_id)
 
-        return jsonify({
-            'success': True,
-            'message': f'已切换模型：{AVAILABLE_MODELS[model_id]["name"]}',
+        return success_response({
             'current_model': new_model
-        })
+        }, f'已切换模型：{AVAILABLE_MODELS[model_id]["name"]}')
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"切换模型失败: {e}")
+        return error_response('切换模型失败', 500, str(e))
 
 
 @app.route('/api/chat', methods=['POST'])
@@ -121,25 +222,32 @@ def chat():
     """处理聊天请求 - 使用 ChatManager.chat() 统一入口"""
     try:
         data = request.get_json()
+        
+        # 验证请求数据
+        if not data:
+            return error_response('请求数据为空', 400)
+            
         user_message = data.get('message', '').strip()
 
         if not user_message:
-            return jsonify({'error': '消息不能为空'}), 400
+            return error_response('消息不能为空', 400)
 
         chat_manager = get_chat_manager()
 
         # 统一使用 ChatManager.chat() → 内部用 Ollama SDK 调用 + 自动管理历史
         ai_reply = chat_manager.chat(user_message, model=chat_manager.model)
+        
+        logger.info(f"对话成功 - 会话ID: {session.get('session_id')[:8]}, 消息长度: {len(user_message)}")
 
-        return jsonify({
-            'success': True,
+        return success_response({
             'reply': ai_reply,
             'current_scene': get_current_scene(chat_manager),
             'current_model': chat_manager.model
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"对话失败 - 会话ID: {session.get('session_id')[:8] if 'session_id' in session else 'unknown'}, 错误: {e}")
+        return error_response('对话失败，请稍后重试', 500, str(e))
 
 
 @app.route('/api/switch_scene', methods=['POST'])
@@ -147,30 +255,30 @@ def switch_scene():
     """切换场景 - 会清空历史并重新加载提示词"""
     try:
         data = request.get_json()
+        
+        if not data:
+            return error_response('请求数据为空', 400)
+            
         scene = data.get('scene', '').strip()
 
         if not scene:
-            return jsonify({'error': '场景名称不能为空'}), 400
+            return error_response('场景名称不能为空', 400)
 
         # 验证场景是否存在
         if scene not in PROMPT_MAP:
             available_scenes = ', '.join(PROMPT_MAP.keys())
-            return jsonify({
-                'error': f'场景 "{scene}" 不存在',
-                'available_scenes': available_scenes
-            }), 400
+            return error_response(f'场景 "{scene}" 不存在', 400, {'available_scenes': available_scenes})
 
         chat_manager = get_chat_manager()
         chat_manager.switch_scene(scene)
 
-        return jsonify({
-            'success': True,
-            'message': f'已切换场景：{scene}，对话历史已重置',
+        return success_response({
             'current_scene': scene
-        })
+        }, f'已切换场景：{scene}，对话历史已重置')
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"切换场景失败: {e}")
+        return error_response('切换场景失败', 500, str(e))
 
 
 @app.route('/api/clear_history', methods=['POST'])
@@ -180,13 +288,11 @@ def clear_history():
         chat_manager = get_chat_manager()
         chat_manager.clear_history()
 
-        return jsonify({
-            'success': True,
-            'message': '对话历史已清空'
-        })
+        return success_response(message='对话历史已清空')
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"清空历史失败: {e}")
+        return error_response('清空历史失败', 500, str(e))
 
 
 @app.route('/api/get_history', methods=['GET'])
@@ -204,14 +310,14 @@ def get_history():
                 'content': msg['content']
             })
 
-        return jsonify({
-            'success': True,
+        return success_response({
             'history': formatted_history,
             'current_scene': get_current_scene(chat_manager)
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"获取历史失败: {e}")
+        return error_response('获取历史失败', 500, str(e))
 
 
 @app.route('/api/get_scenes', methods=['GET'])
@@ -219,13 +325,11 @@ def get_scenes():
     """获取所有可用场景"""
     try:
         scenes = list(PROMPT_MAP.keys())
-        return jsonify({
-            'success': True,
-            'scenes': scenes
-        })
+        return success_response({'scenes': scenes})
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"获取场景列表失败: {e}")
+        return error_response('获取场景列表失败', 500, str(e))
 
 
 @app.route('/api/reset_session', methods=['POST'])
@@ -235,13 +339,15 @@ def reset_session():
         # 检查会话上限
         current_count = ChatManager.session_count()
         if current_count >= MAX_SESSIONS:
-            return jsonify({
-                'success': False,
-                'session_limit_reached': True,
-                'message': f'会话已超过最大值 {MAX_SESSIONS}，请先删除历史会话。',
-                'max_sessions': MAX_SESSIONS,
-                'current_count': current_count
-            })
+            return error_response(
+                f'会话已超过最大值 {MAX_SESSIONS}，请先删除历史会话。', 
+                400,
+                {
+                    'session_limit_reached': True,
+                    'max_sessions': MAX_SESSIONS,
+                    'current_count': current_count
+                }
+            )
 
         if 'session_id' in session:
             old_session_id = session['session_id']
@@ -253,14 +359,13 @@ def reset_session():
         new_mgr = get_chat_manager()
         new_session_id = new_mgr.session_id
 
-        return jsonify({
-            'success': True,
-            'message': '会话已重置',
+        return success_response({
             'new_session_id': new_session_id
-        })
+        }, '会话已重置')
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"重置会话失败: {e}")
+        return error_response('重置会话失败', 500, str(e))
 
 
 @app.route('/api/list_sessions', methods=['GET'])
@@ -268,12 +373,10 @@ def list_sessions():
     """列出所有历史会话"""
     try:
         sessions = ChatManager.list_sessions()
-        return jsonify({
-            'success': True,
-            'sessions': sessions
-        })
+        return success_response({'sessions': sessions})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"列出会话失败: {e}")
+        return error_response('列出会话失败', 500, str(e))
 
 
 @app.route('/api/delete_session', methods=['POST'])
@@ -281,17 +384,24 @@ def delete_session():
     """删除指定会话"""
     try:
         data = request.get_json()
+        
+        if not data:
+            return error_response('请求数据为空', 400)
+            
         session_id = data.get('session_id', '').strip()
         if not session_id:
-            return jsonify({'error': '会话 ID 不能为空'}), 400
+            return error_response('会话 ID 不能为空', 400)
 
         result = ChatManager.delete_session(session_id)
-        return jsonify({
-            'success': result,
-            'message': '会话已删除' if result else '会话不存在'
-        })
+        
+        if result:
+            return success_response(message='会话已删除')
+        else:
+            return error_response('会话不存在', 404)
+            
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"删除会话失败: {e}")
+        return error_response('删除会话失败', 500, str(e))
 
 
 @app.route('/api/load_session', methods=['POST'])
@@ -302,14 +412,18 @@ def load_session():
     """
     try:
         data = request.get_json()
+        
+        if not data:
+            return error_response('请求数据为空', 400)
+            
         target_session_id = data.get('session_id', '').strip()
         if not target_session_id:
-            return jsonify({'error': '会话 ID 不能为空'}), 400
+            return error_response('会话 ID 不能为空', 400)
 
         # 1. 检查目标会话文件是否存在
         filepath = os.path.join(DATA_DIR, f"{target_session_id}.json")
         if not os.path.exists(filepath):
-            return jsonify({'success': False, 'error': '会话文件不存在'}), 404
+            return error_response('会话文件不存在', 404)
 
         # 2. 清理旧会话，创建新 ChatManager（自动从文件加载）
         old_session_id = session.get('session_id', '')
@@ -334,14 +448,12 @@ def load_session():
                 'content': msg['content']
             })
 
-        return jsonify({
-            'success': True,
-            'message': f'已切换到会话 {target_session_id}',
+        return success_response({
             'history': history_messages,
             'current_scene': scene,
             'current_model': model,
             'session_id': target_session_id
-        })
+        }, f'已切换到会话 {target_session_id[:8]}')
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -353,14 +465,25 @@ def rename_session():
     """重命名指定会话"""
     try:
         data = request.get_json()
+        
+        if not data:
+            return error_response('请求数据为空', 400)
+            
         session_id = data.get('session_id', '').strip()
         new_name = data.get('name', '').strip()
         if not session_id or not new_name:
-            return jsonify({'error': '参数不能为空'}), 400
+            return error_response('参数不能为空', 400)
+            
         result = ChatManager.rename_session(session_id, new_name)
-        return jsonify({'success': result, 'name': new_name})
+        
+        if result:
+            return success_response({'name': new_name}, '重命名成功')
+        else:
+            return error_response('会话不存在', 404)
+            
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"重命名会话失败: {e}")
+        return error_response('重命名会话失败', 500, str(e))
 
 
 @app.route('/api/toggle_pin', methods=['POST'])
@@ -368,15 +491,24 @@ def toggle_pin():
     """切换会话置顶状态"""
     try:
         data = request.get_json()
+        
+        if not data:
+            return error_response('请求数据为空', 400)
+            
         session_id = data.get('session_id', '').strip()
         if not session_id:
-            return jsonify({'error': '会话 ID 不能为空'}), 400
+            return error_response('会话 ID 不能为空', 400)
+            
         new_pinned = ChatManager.toggle_pin(session_id)
+        
         if new_pinned is None:
-            return jsonify({'success': False, 'error': '会话文件不存在'}), 404
-        return jsonify({'success': True, 'pinned': new_pinned})
+            return error_response('会话文件不存在', 404)
+            
+        return success_response({'pinned': new_pinned})
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"切换置顶状态失败: {e}")
+        return error_response('切换置顶状态失败', 500, str(e))
 
 def get_current_scene(chat_manager):
     """从系统提示词推断当前场景"""

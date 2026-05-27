@@ -63,29 +63,39 @@
 
         .chat-container {
             flex: 1;
-            height: calc(100vh - 20px);
+            height: 100vh;
             background: var(--bg-primary);
-            border-radius: 24px;
-            box-shadow: var(--card-shadow);
+            border-radius: 0;
+            box-shadow: none;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            margin: 10px;
-            margin-left: 270px;
+            margin: 0;
+            margin-left: 260px;
+            border-left: none;
+            padding-left: 0;
+            position: relative;
+            left: -2px;
+            width: calc(100% - 258px);
+            z-index: 101;
         }
         .chat-container.sidebar-collapsed {
-            margin-left: 10px;
+            margin-left: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
         }
 
         .chat-header {
             background: linear-gradient(135deg, rgba(102,126,234,0.95) 0%, rgba(118,75,162,0.95) 100%);
             backdrop-filter: blur(10px);
             color: white;
-            padding: 24px 28px;
+            padding: 16px 28px;
             text-align: center;
             position: relative;
             box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            height: 130px;
+            box-sizing: border-box;
         }
 
         .chat-header h1 {
@@ -664,23 +674,28 @@
         /* ==================== 侧边栏样式 ==================== */
         .sidebar {
             position: fixed;
-            left: 10px;
-            top: 10px;
-            bottom: 10px;
+            left: 0;
+            top: 0;
+            bottom: 0;
             width: 260px;
             min-width: 180px;
             max-width: 400px;
             background: var(--sidebar-bg);
             backdrop-filter: blur(10px);
-            border-radius: 24px;
+            border-radius: 0;
             border: none;
+            border-right: none;
             display: flex;
             flex-direction: column;
-            z-index: 100;
-            box-shadow: 4px 0 24px rgba(0,0,0,0.08);
+            z-index: 99;
+            box-shadow: none;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            outline: none;
         }
         .sidebar.collapsed { 
-            transform: translateX(calc(-100% + 8px)); 
+            transform: translateX(calc(-100% + 32px)); 
         }
 
         .sidebar-header {
@@ -774,24 +789,34 @@
             transition: var(--transition);
             position: relative;
             border: 1px solid transparent;
+            background: #ffffff;
+            border-color: #f3f4f6;
         }
-        .sidebar-item:hover { background: var(--bg-secondary); }
+        .sidebar-item:hover { 
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            transform: translateX(2px);
+        }
         .sidebar-item.active {
             border-color: #667eea;
-            background: #f9fafb;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8efff 100%);
             border-left: 3px solid #667eea;
-            box-shadow: 0 2px 6px rgba(102,126,234,0.1);
-            border-color: #667eea !important;
+            box-shadow: 0 2px 12px rgba(102,126,234,0.15);
+            border-color: #c7d2fe !important;
         }
         .sidebar-item-title {
             font-size: 13px;
             font-weight: 600;
-            color: var(--text-primary);
+            color: #1f2937;
             margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             padding-right: 88px;
+        }
+        .sidebar-item.active .sidebar-item-title {
+            color: #4338ca;
+            font-weight: 700;
         }
         .sidebar-item-meta {
             font-size: 11px;
@@ -851,35 +876,7 @@
         .sidebar-item.pinned .sidebar-item-pin { display: flex; color: #f59e0b; }
 
         .sidebar-toggle {
-            position: absolute;
-            right: -10px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 20px;
-            height: 32px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--bg-primary);
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 8px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-            z-index: 101;
-        }
-        .sidebar-toggle:hover { 
-            background: var(--accent-color); 
-            color: white; 
-            transform: translateY(-50%) scale(1.05);
-            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
-        }
-        .sidebar.collapsed .sidebar-toggle {
-            right: -10px;
-            left: auto;
-            border-radius: 8px;
+            display: none;
         }
 
         /* 侧边栏拖动条 */
@@ -937,16 +934,56 @@
         /* 时间戳 */
         .sidebar-item-time {
             font-size: 11px;
-            color: #d1d5db;
+            color: #9ca3af;
             margin-top: 2px;
+        }
+        .sidebar-item.active .sidebar-item-time {
+            color: #6b7280;
         }
 
         /* 侧边栏顶部区域 */
         .sidebar-top {
             padding: 16px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 24px 24px 0 0;
+            border-radius: 0;
             flex-shrink: 0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 130px;
+            justify-content: center;
+        }
+        .sidebar-search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-search-wrapper .sidebar-search {
+            flex: 1;
+        }
+        .sidebar-top .sidebar-toggle {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.9);
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 300;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .sidebar-top .sidebar-toggle:hover {
+            background: rgba(255,255,255,0.25);
+            color: #ffffff;
+            transform: scale(1.1);
         }
 
         .sidebar-new-dialog {
@@ -960,7 +997,7 @@
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            margin-bottom: 12px;
+            margin-bottom: 0;
             text-align: left;
             transition: all 0.3s ease;
             backdrop-filter: blur(4px);
@@ -1066,12 +1103,15 @@
             <button class="sidebar-new-dialog" onclick="newSession()">
                 <span>+ 新建对话</span>
             </button>
-            <div class="sidebar-search">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="M21 21l-4.35-4.35"></path>
-                </svg>
-                <input type="text" placeholder="搜索对话..." id="searchInput">
+            <div class="sidebar-search-wrapper">
+                <div class="sidebar-search">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="M21 21l-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" placeholder="搜索对话..." id="searchInput">
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="收起侧边栏">‹</button>
             </div>
         </div>
         
@@ -1157,7 +1197,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://127.0.0.1:5000/api';
+        const API_BASE = '/api';
 
         // 配置 marked.js
         marked.setOptions({
@@ -1434,7 +1474,6 @@
         // ==================== 侧边栏功能 ====================
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            const expandBtn = document.getElementById('sidebarExpandBtn');
             const chatContainer = document.getElementById('chatContainer');
             const isCollapsed = sidebar.classList.toggle('collapsed');
             
@@ -1443,17 +1482,15 @@
                 chatContainer.style.marginLeft = '';
                 chatContainer.classList.add('sidebar-collapsed');
                 sidebar.style.width = '';
-                expandBtn.classList.add('visible');
             } else {
                 // 展开时：恢复之前的宽度设置
                 chatContainer.classList.remove('sidebar-collapsed');
-                expandBtn.classList.remove('visible');
                 // 恢复保存的宽度
                 const savedWidth = localStorage.getItem('sidebarWidth');
                 if (savedWidth) {
                     const width = parseInt(savedWidth);
                     sidebar.style.width = width + 'px';
-                    chatContainer.style.marginLeft = (width + 20) + 'px';
+                    chatContainer.style.marginLeft = width + 'px';
                 } else {
                     sidebar.style.width = '';
                     chatContainer.style.marginLeft = '';
@@ -1493,7 +1530,7 @@
                 newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
                 
                 sidebar.style.width = newWidth + 'px';
-                chatContainer.style.marginLeft = (newWidth + 20) + 'px';
+                chatContainer.style.marginLeft = newWidth + 'px';
                 
                 // 保存宽度到 localStorage
                 localStorage.setItem('sidebarWidth', newWidth);
@@ -1611,13 +1648,15 @@
             return fetch('/api/list_sessions')
                 .then(res => res.json())
                 .then(data => {
+                    // 新响应格式：数据在 data.data 中
+                    const result = data.data || data;
                     const list = document.getElementById('sidebarList');
-                    if (!data.success || !data.sessions || data.sessions.length === 0) {
+                    if (!data.success || !result.sessions || result.sessions.length === 0) {
                         list.innerHTML = '<div class="sidebar-loading">暂无会话</div>';
                         return;
                     }
                     let html = '';
-                    data.sessions.forEach(s => {
+                    result.sessions.forEach(s => {
                         // 格式化时间戳
                         let timeStr = '';
                         if (s.updated_at) {
@@ -1656,6 +1695,8 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
+                        // 新响应格式：数据在 data.data 中
+                        const result = data.data || data;
                         // 清空聊天区并展示欢迎消息
                         document.getElementById('chatMessages').innerHTML = `
                             <div class="message ai">
@@ -1667,17 +1708,17 @@
                         `;
                         // 刷新侧边栏列表，加载完成后高亮新会话
                         loadSessions().then(() => {
-                            if (data.new_session_id) {
+                            if (result.new_session_id) {
                                 const items = document.querySelectorAll('.sidebar-item');
                                 items.forEach(item => item.classList.remove('active'));
-                                const newItem = document.querySelector(`.sidebar-item[data-sid="${data.new_session_id}"]`);
+                                const newItem = document.querySelector(`.sidebar-item[data-sid="${result.new_session_id}"]`);
                                 if (newItem) {
                                     newItem.classList.add('active');
                                 }
                             }
                         });
-                    } else if (data.session_limit_reached) {
-                        alert('会话已超过最大值 ' + data.max_sessions + '，请先删除历史会话。');
+                    } else if (data.details && data.details.session_limit_reached) {
+                        alert('会话已超过最大值 ' + data.details.max_sessions + '，请先删除历史会话。');
                     }
                 });
         }
@@ -1692,13 +1733,15 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    // 新响应格式：数据在 data.data 中
+                    const result = data.data || data;
                     // 清空当前聊天区域
                     const chatMessages = document.getElementById('chatMessages');
                     chatMessages.innerHTML = '';
 
                     // 渲染历史消息
-                    if (data.history && data.history.length > 0) {
-                        data.history.forEach(msg => {
+                    if (result.history && result.history.length > 0) {
+                        result.history.forEach(msg => {
                             addMessage(msg.content, msg.role);
                         });
                     } else {
@@ -1714,11 +1757,11 @@
                     }
 
                     // 更新模型和场景 UI
-                    if (data.current_model) {
-                        updateModelStatus(data.current_model);
+                    if (result.current_model) {
+                        updateModelStatus(result.current_model);
                     }
-                    if (data.current_scene) {
-                        document.getElementById('sceneSelect').value = data.current_scene;
+                    if (result.current_scene) {
+                        document.getElementById('sceneSelect').value = result.current_scene;
                         const sceneNames = {
                             'general': '通用对话',
                             'python': 'Python',
@@ -1728,7 +1771,7 @@
                             'shell': 'Shell'
                         };
                         document.getElementById('currentScene').textContent =
-                            sceneNames[data.current_scene] || data.current_scene;
+                            sceneNames[result.current_scene] || result.current_scene;
                     }
 
                     // 高亮当前会话
@@ -1821,20 +1864,22 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // 新响应格式：数据在 data.data 中
+                    const result = data.data || data;
                     const modelSelect = document.getElementById('modelSelect');
                     modelSelect.innerHTML = '';
 
-                    data.models.forEach(model => {
+                    result.models.forEach(model => {
                         const option = document.createElement('option');
                         option.value = model.id;
                         option.textContent = model.name;
-                        if (model.value === data.current_model) {
+                        if (model.value === result.current_model) {
                             option.selected = true;
                         }
                         modelSelect.appendChild(option);
                     });
 
-                    updateModelStatus(data.current_model);
+                    updateModelStatus(result.current_model);
                 }
             } catch (error) {
                 console.error('加载模型失败:', error);
@@ -1847,6 +1892,8 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // 新响应格式：数据在 data.data 中
+                    const result = data.data || data;
                     const sceneSelect = document.getElementById('sceneSelect');
                     sceneSelect.innerHTML = '';
 
@@ -1856,7 +1903,7 @@
                         'creative': '创意写作'
                     };
 
-                    data.scenes.forEach(scene => {
+                    result.scenes.forEach(scene => {
                         const option = document.createElement('option');
                         option.value = scene;
                         option.textContent = sceneNames[scene] || scene;
@@ -1881,8 +1928,10 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // 新响应格式：数据在 data.data 中
+                    const result = data.data || data;
                     addSystemMessage(data.message);
-                    updateModelStatus(data.current_model);
+                    updateModelStatus(result.current_model);
                     showNotification('模型切换成功', 'success');
                 } else {
                     showNotification('切换模型失败: ' + data.error, 'error');
@@ -1906,6 +1955,8 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // 新响应格式：数据在 data.data 中
+                    const result = data.data || data;
                     addSystemMessage(data.message);
                     document.getElementById('currentScene').textContent =
                         document.getElementById('sceneSelect').selectedOptions[0].text;
@@ -1949,10 +2000,24 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    addMessage(data.reply, 'ai');
+                    // 新响应格式：data.data 包含实际数据
+                    const reply = data.data?.reply || data.reply;
+                    addMessage(reply, 'ai');
+                    
+                    // 显示成功通知
+                    if (data.message) {
+                        showNotification(data.message, 'success');
+                    }
                 } else {
-                    addMessage('抱歉，出现错误: ' + data.error, 'ai');
-                    showNotification('发送失败', 'error');
+                    // 新响应格式：错误信息在 data.error
+                    const errorMsg = data.error || '未知错误';
+                    addMessage('抱歉，出现错误: ' + errorMsg, 'ai');
+                    showNotification(errorMsg, 'error');
+                    
+                    // 显示详细错误信息（如果有）
+                    if (data.details) {
+                        console.error('详细错误:', data.details);
+                    }
                 }
             } catch (error) {
                 console.error('发送失败:', error);
