@@ -913,11 +913,12 @@
             color: var(--text-secondary);
             cursor: pointer;
             font-size: 12px;
-            z-index: 99;
-            display: none;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: var(--transition);
         }
-        .sidebar-expand-btn.visible { display: flex; align-items: center; justify-content: center; }
         .sidebar-expand-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
 
         @media (max-width: 768px) {
@@ -1475,6 +1476,7 @@
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const chatContainer = document.getElementById('chatContainer');
+            const expandBtn = document.getElementById('sidebarExpandBtn');
             const isCollapsed = sidebar.classList.toggle('collapsed');
             
             if (isCollapsed) {
@@ -1482,9 +1484,11 @@
                 chatContainer.style.marginLeft = '';
                 chatContainer.classList.add('sidebar-collapsed');
                 sidebar.style.width = '';
+                expandBtn.style.display = 'flex';
             } else {
                 // 展开时：恢复之前的宽度设置
                 chatContainer.classList.remove('sidebar-collapsed');
+                expandBtn.style.display = 'none';
                 // 恢复保存的宽度
                 const savedWidth = localStorage.getItem('sidebarWidth');
                 if (savedWidth) {
@@ -1844,11 +1848,11 @@
         }
 
         (function() {
-            if (localStorage.getItem('sidebarCollapsed') === 'true') {
-                document.getElementById('sidebar').classList.add('collapsed');
-                document.getElementById('chatContainer').classList.add('sidebar-collapsed');
-                document.getElementById('sidebarExpandBtn').classList.add('visible');
-            }
+            // 确保侧边栏默认展开
+            localStorage.removeItem('sidebarCollapsed');
+            document.getElementById('sidebar').classList.remove('collapsed');
+            document.getElementById('chatContainer').classList.remove('sidebar-collapsed');
+            document.getElementById('sidebarExpandBtn').style.display = 'none';
         })();
 
 

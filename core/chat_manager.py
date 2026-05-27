@@ -41,12 +41,12 @@ class ChatManager:
             self._save_to_file()
 
         print("\n" + "=" * 80)
-        print("🎯 ChatManager 初始化完成")
-        print(f"📋 当前场景: {self.current_scene}")
-        print(f"🤖 使用模型: {self.model}")
-        print(f"💾 会话 ID: {self.session_id}")
-        print(f"📝 可用场景: {list(PROMPT_MAP.keys())}")
-        print(f"📂 历史消息数: {len(self.messages) - 1} 条" if loaded else "")
+        print("[INFO] ChatManager 初始化完成")
+        print(f"[INFO] 当前场景: {self.current_scene}")
+        print(f"[INFO] 使用模型: {self.model}")
+        print(f"[INFO] 会话 ID: {self.session_id}")
+        print(f"[INFO] 可用场景: {list(PROMPT_MAP.keys())}")
+        print(f"[INFO] 历史消息数: {len(self.messages) - 1} 条" if loaded else "")
         print("=" * 80 + "\n")
 
     # ==================== 持久化核心 ====================
@@ -85,10 +85,10 @@ class ChatManager:
             self.model = data.get("model", self.model)
             self.pinned = data.get("pinned", False)
             self.custom_name = data.get("custom_name", "")
-            print(f"📂 已恢复上次会话 ({len(self.messages) - 1} 条历史消息)")
+            print(f"[INFO] 已恢复上次会话 ({len(self.messages) - 1} 条历史消息)")
             return True
         except Exception as e:
-            print(f"⚠️ 恢复会话失败: {e}")
+            print(f"[WARN] 恢复会话失败: {e}")
             return False
 
     def _generate_summary(self):
@@ -149,12 +149,12 @@ class ChatManager:
         """加载系统提示词"""
         system_prompt = PROMPT_MAP.get(self.current_scene, PROMPT_MAP["general"])
         self.messages = [{"role": "system", "content": system_prompt}]
-        print(f"📝 已加载场景 '{self.current_scene}' 的提示词 ({len(system_prompt)} 字符)\n")
+        print(f"[INFO] 已加载场景 '{self.current_scene}' 的提示词 ({len(system_prompt)} 字符)\n")
 
     def switch_scene(self, scene):
         """切换场景（会清空历史，重新加载提示词）"""
         if scene not in PROMPT_MAP:
-            print(f"❌ 场景 '{scene}' 不存在！可用场景: {list(PROMPT_MAP.keys())}")
+            print(f"[ERROR] 场景 '{scene}' 不存在！可用场景: {list(PROMPT_MAP.keys())}")
             return False
 
         self.current_scene = scene
@@ -164,9 +164,9 @@ class ChatManager:
         # 切换场景后自动保存
         self._save_to_file()
 
-        print("\n" + "🔄" * 40)
-        print(f"✅ 已切换场景：{scene}（历史已清空）")
-        print("🔄" * 40 + "\n")
+        print("\n" + "-" * 40)
+        print(f"[INFO] 已切换场景：{scene}（历史已清空）")
+        print("-" * 40 + "\n")
         return True
 
     def add_message(self, role: str, content: str):
@@ -190,7 +190,7 @@ class ChatManager:
                 for i, qa in enumerate(similar_qa, 1):
                     memory_hint += f"{i}. 用户问过: {qa['q'][:200]}\n   你当时回答: {qa['a'][:300]}\n"
                 messages.append({"role": "system", "content": memory_hint})
-                print(f"🧠 注入了 {len(similar_qa)} 条历史记忆到上下文")
+                print(f"[INFO] 注入了 {len(similar_qa)} 条历史记忆到上下文")
 
             # 添加历史对话（不含系统提示词）
             messages.extend(self.messages[1:])
@@ -203,8 +203,8 @@ class ChatManager:
             selected_model = model or self.model
 
             print("\n" + "=" * 80)
-            print(f"🎯 当前场景: {self.current_scene}")
-            print(f"🤖 使用模型: {selected_model}")
+            print(f"[INFO] 当前场景: {self.current_scene}")
+            print(f"[INFO] 使用模型: {selected_model}")
             print("=" * 80 + "\n")
 
             # 4. 调用 Ollama
@@ -228,7 +228,7 @@ class ChatManager:
 
         except Exception as e:
             error_msg = f"发生错误: {str(e)}"
-            print(f"❌ {error_msg}\n")
+            print(f"[ERROR] {error_msg}\n")
             return error_msg
 
     def add_user_message(self, content):
@@ -248,7 +248,7 @@ class ChatManager:
         system_prompt = self.messages[0]
         self.messages = [system_prompt]
         self._save_to_file()
-        print("✅ 对话历史已清空（保留系统提示词）\n")
+        print("[INFO] 对话历史已清空（保留系统提示词）\n")
 
     # ==================== 记忆检索 ====================
 
