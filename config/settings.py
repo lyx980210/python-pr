@@ -38,3 +38,14 @@ LOGGING_CONFIG = {
     'max_file_size': 200 * 1024 * 1024,       # 单个日志文件最大大小（200MB）
     'compress': True,                         # 是否压缩历史日志文件
 }
+
+# 启动日志配置（用于记录程序启动过程，便于排查启动失败问题）
+BOOT_LOGGING_CONFIG = {
+    'level': 'DEBUG',                         # 启动日志级别：DEBUG 更详细
+    'file_name': 'appBoot.log',               # 启动日志文件名
+    'backup_count': 10,                       # 保留历史启动日志数
+    'encoding': 'utf-8',                      # 文件编码
+    'format': '%(asctime)s - %(levelname)s - %(message)s',  # 日志格式
+    'max_file_size': 50 * 1024 * 1024,        # 单个启动日志最大大小（50MB）
+    'compress': True,                         # 是否压缩历史日志文件
+}

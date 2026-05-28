@@ -22,7 +22,68 @@ from flask_cors import CORS
 from core.chat_manager import ChatManager, DATA_DIR
 from core.llm_client import chat_with_memory  # 保留兼容（命令行模式使用）
 from prompts import PROMPT_MAP
-from config.settings import CODE_MODEL, GENERAL_MODEL, ADVANCED_MODEL, MAX_SESSIONS, LOGGING_CONFIG
+from config.settings import CODE_MODEL, GENERAL_MODEL, ADVANCED_MODEL, MAX_SESSIONS, LOGGING_CONFIG, BOOT_LOGGING_CONFIG
+
+# 配置启动日志（用于记录程序启动过程）
+def setup_boot_logging():
+    boot_config = BOOT_LOGGING_CONFIG
+    log_dir = LOGGING_CONFIG['log_dir']  # 复用主日志目录
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # 创建日志格式
+    log_format = logging.Formatter(boot_config['format'])
+    
+    # 创建启动日志记录器
+    boot_logger = logging.getLogger('boot_logger')
+    boot_logger.setLevel(getattr(logging, boot_config['level'].upper(), logging.DEBUG))
+    boot_logger.propagate = False
+    
+    # 移除已存在的处理器
+    for handler in boot_logger.handlers[:]:
+        boot_logger.removeHandler(handler)
+    
+    # 控制台处理器
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_format)
+    boot_logger.addHandler(console_handler)
+    
+    # 文件处理器（支持压缩）
+    file_path = os.path.join(log_dir, boot_config['file_name'])
+    
+    class BootCompressingHandler(RotatingFileHandler):
+        def __init__(self, filename, maxBytes=0, backupCount=0, encoding=None, delay=False):
+            super().__init__(filename, maxBytes=maxBytes, backupCount=backupCount, encoding=encoding, delay=delay)
+        
+        def doRollover(self):
+            super().doRollover()
+            if boot_config.get('compress', False):
+                backup_files = []
+                for f in os.listdir(log_dir):
+                    if f.startswith(os.path.basename(file_path)) and f != os.path.basename(file_path):
+                        backup_files.append(f)
+                if backup_files:
+                    backup_files.sort(reverse=True)
+                    latest_backup = backup_files[0]
+                    backup_path = os.path.join(log_dir, latest_backup)
+                    gz_path = backup_path + '.gz'
+                    try:
+                        with open(backup_path, 'rb') as f_in:
+                            with gzip.open(gz_path, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                        os.remove(backup_path)
+                    except Exception as e:
+                        print(f"压缩启动日志文件失败: {e}")
+    
+    file_handler = BootCompressingHandler(
+        file_path,
+        maxBytes=boot_config.get('max_file_size', 50 * 1024 * 1024),
+        backupCount=boot_config['backup_count'],
+        encoding=boot_config['encoding']
+    )
+    file_handler.setFormatter(log_format)
+    boot_logger.addHandler(file_handler)
+    
+    return boot_logger
 
 # 配置日志（从统一配置文件读取）
 def setup_logging():
@@ -98,17 +159,25 @@ def setup_logging():
     
     return logger
 
+# 初始化启动日志
+boot_logger = setup_boot_logging()
+boot_logger.info("="*60)
+boot_logger.info("AI 对话助手 - 启动日志开始")
+boot_logger.info("="*60)
+
 # 初始化日志
 logger = setup_logging()
 
 # 指定 templates 文件夹路径（在项目根目录下）
 template_dir = os.path.join(project_root, 'templates')
+boot_logger.debug(f"模板文件夹路径: {template_dir}")
 
 # 创建 Flask 应用，指定模板文件夹
 app = Flask(__name__, template_folder=template_dir)
 app.secret_key = 'your-secret-key-here-change-in-production'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 CORS(app)
+boot_logger.info("Flask 应用初始化完成")
 
 # 存储每个会话的 ChatManager 实例
 chat_sessions = {}
@@ -526,10 +595,33 @@ def get_current_scene(chat_manager):
 
 
 if __name__ == '__main__':
-    print("\nFlask 应用启动")
-    print(f"模板文件夹: {app.template_folder}")
-    print("可用模型:")
-    for key, value in AVAILABLE_MODELS.items():
-        print(f"   - {value['name']}: {value['value']}")
-    print("访问地址: http://127.0.0.1:5000\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    try:
+        boot_logger.info("="*60)
+        boot_logger.info("开始启动 Flask 应用...")
+        boot_logger.info("="*60)
+        
+        boot_logger.info(f"模板文件夹: {app.template_folder}")
+        boot_logger.info("可用模型列表:")
+        for key, value in AVAILABLE_MODELS.items():
+            boot_logger.info(f"   - {value['name']}: {value['value']}")
+        
+        boot_logger.info(f"日志目录: {LOGGING_CONFIG['log_dir']}")
+        boot_logger.info(f"会话数据目录: {DATA_DIR}")
+        boot_logger.info(f"最大会话数限制: {MAX_SESSIONS}")
+        
+        boot_logger.info("Flask 应用启动成功")
+        boot_logger.info(f"访问地址: http://127.0.0.1:5000")
+        boot_logger.info("="*60)
+        
+        print("\nFlask 应用启动")
+        print(f"模板文件夹: {app.template_folder}")
+        print("可用模型:")
+        for key, value in AVAILABLE_MODELS.items():
+            print(f"   - {value['name']}: {value['value']}")
+        print("访问地址: http://127.0.0.1:5000\n")
+        
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    
+    except Exception as e:
+        boot_logger.critical(f"应用启动失败: {str(e)}", exc_info=True)
+        raise
