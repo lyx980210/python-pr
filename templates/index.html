@@ -1042,6 +1042,30 @@
             pointer-events: none;
         }
 
+        /* 搜索清除按钮 */
+        .search-clear-btn {
+            position: absolute;
+            right: 8px;
+            width: 18px;
+            height: 18px;
+            border: none;
+            border-radius: 50%;
+            background: #9ca3af;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            padding: 0;
+            line-height: 1;
+        }
+        .search-clear-btn:hover {
+            background: #6b7280;
+        }
+
         /* 调整折叠按钮位置 */
         .sidebar-toggle {
             right: -28px;
@@ -1110,7 +1134,8 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="M21 21l-4.35-4.35"></path>
                     </svg>
-                    <input type="text" placeholder="搜索对话..." id="searchInput">
+                    <input type="text" placeholder="搜索对话..." id="searchInput" oninput="handleSearchInput(this.value)" onkeydown="handleSearchKeydown(event)">
+                    <button class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()" style="display:none;" title="清除搜索">×</button>
                 </div>
                 <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="收起侧边栏">‹</button>
             </div>
@@ -1648,15 +1673,20 @@
             initCustomScrollbar();
         });
 
-        function loadSessions() {
-            return fetch('/api/list_sessions')
+        // 当前搜索关键词
+        let currentSearchKeyword = '';
+
+        function loadSessions(keyword = '') {
+            const url = keyword ? `/api/search_sessions?keyword=${encodeURIComponent(keyword)}` : '/api/list_sessions';
+            return fetch(url)
                 .then(res => res.json())
                 .then(data => {
                     // 新响应格式：数据在 data.data 中
                     const result = data.data || data;
                     const list = document.getElementById('sidebarList');
                     if (!data.success || !result.sessions || result.sessions.length === 0) {
-                        list.innerHTML = '<div class="sidebar-loading">暂无会话</div>';
+                        const emptyMsg = keyword ? `未找到包含 "${escapeHtml(keyword)}" 的会话` : '暂无会话';
+                        list.innerHTML = `<div class="sidebar-loading">${emptyMsg}</div>`;
                         return;
                     }
                     let html = '';
@@ -1692,6 +1722,49 @@
                 .catch(err => {
                     document.getElementById('sidebarList').innerHTML = '<div class="sidebar-loading">加载失败</div>';
                 });
+        }
+
+        // 搜索会话功能
+        function searchSessions(keyword) {
+            currentSearchKeyword = keyword.trim();
+            loadSessions(currentSearchKeyword);
+        }
+
+        // 清除搜索
+        function clearSearch() {
+            currentSearchKeyword = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchClearBtn').style.display = 'none';
+            loadSessions();
+        }
+
+        // 处理搜索输入
+        let searchTimeout = null;
+        function handleSearchInput(value) {
+            // 显示/隐藏清除按钮
+            const clearBtn = document.getElementById('searchClearBtn');
+            clearBtn.style.display = value.trim() ? 'flex' : 'none';
+            
+            // 防抖处理，300ms后执行搜索
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            searchTimeout = setTimeout(() => {
+                searchSessions(value);
+            }, 300);
+        }
+
+        // 处理搜索框按键事件
+        function handleSearchKeydown(event) {
+            if (event.key === 'Escape') {
+                clearSearch();
+            } else if (event.key === 'Enter') {
+                // 立即执行搜索
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+                searchSessions(event.target.value);
+            }
         }
 
         function newSession() {

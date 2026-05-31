@@ -448,6 +448,76 @@ def list_sessions():
         return error_response('列出会话失败', 500, str(e))
 
 
+def contains_garbled_chinese(text):
+    """检查字符串是否包含乱码中文字符（GBK编码用UTF-8解码产生的乱码）"""
+    if not text:
+        return False
+    # 常见的GBK乱码字符模式（这些字符在正常中文中很少或不会出现）
+    garbled_patterns = [
+        '鎴戞槸', '涓€', '鍚嶄', '澶х', '寮€', '鍙戝', '浣犳', '璋?',
+        '浠€', '涔堟', '闃块噷', '戝紑', '鍙戠', '鑾峰', '瑙ｅ', '閫氫',
+        '箟鍗', '冮棶', '澶ц', '妯¤', '瑷€', '妯″', '甯', '姪鐢',
+        'ㄦ埛', '鍑嗙', '銆佹', '鐢ㄧ', '淇℃', '伅锛', '屽', '鏋滀',
+        '綘鏈', '変换', '曞叧', '浜庡', 'ぇ妯', '″瀷', '瀛︿', '範鎴',
+        '栫紪', '绋嬫', '柟闈', '㈢殑', '闂', '锛', '岃', '闅忔',
+        '椂鍛', '婅瘔', '鎴戯', '紒褰', '撶劧', '鍙', '互涓', '嬫槸',
+        '涓€涓', '敤', '娉℃', '帓搴', '忕畻', '娉曪', 'ā鍨?'
+    ]
+    for pattern in garbled_patterns:
+        if pattern in text:
+            return True
+    return False
+
+@app.route('/api/search_sessions', methods=['GET'])
+def search_sessions():
+    """搜索会话（根据关键词搜索会话名称、摘要、场景和模型）"""
+    try:
+        keyword = request.args.get('keyword', '').strip()
+        
+        if not keyword:
+            return error_response('搜索关键词不能为空', 400)
+        
+        # 获取所有会话
+        all_sessions = ChatManager.list_sessions()
+        
+        # 搜索匹配的会话（只搜索会话元数据，不搜索消息内容）
+        matched_sessions = []
+        keyword_lower = keyword.lower()
+        
+        for session in all_sessions:
+            # 搜索字段：只搜索自定义名称、场景、模型（不搜索摘要和消息内容）
+            search_fields = [
+                session.get('custom_name', ''),
+                session.get('scene', ''),
+                session.get('model', ''),
+            ]
+            
+            # 检查是否有字段匹配
+            is_match = False
+            for field in search_fields:
+                # 跳过乱码字段（包含GBK乱码的字段）
+                if contains_garbled_chinese(field):
+                    continue
+                if keyword_lower in field.lower():
+                    is_match = True
+                    break
+            
+            if is_match:
+                matched_sessions.append(session)
+        
+        logger.info(f"会话搜索完成 - 关键词: '{keyword}', 匹配数: {len(matched_sessions)}")
+        
+        return success_response({
+            'sessions': matched_sessions,
+            'keyword': keyword,
+            'total': len(matched_sessions)
+        })
+        
+    except Exception as e:
+        logger.error(f"搜索会话失败: {e}")
+        return error_response('搜索会话失败', 500, str(e))
+
+
 @app.route('/api/delete_session', methods=['POST'])
 def delete_session():
     """删除指定会话"""
